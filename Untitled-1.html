@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cubo 3D Interativo com Música</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: url("img/baby.jpg"); /* Caminho relativo para a imagem de fundo */
+            background-size: cover;
+            background-position: center;
+        }
+        .scene {
+            width: 200px;
+            height: 200px;
+            perspective: 800px;
+            z-index: 10;
+        }
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(0deg) rotateY(0deg);
+            transition: transform 0.1s;
+            cursor: pointer;
+            animation: rotate 10s linear infinite; /* Animação inicial de rotação */
+        }
+        .cube__face {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ccc;
+        }
+        .cube__face--front  { transform: rotateY(  0deg) translateZ(100px); }
+        .cube__face--back   { transform: rotateY(180deg) translateZ(100px); }
+        .cube__face--right  { transform: rotateY( 90deg) translateZ(100px); }
+        .cube__face--left   { transform: rotateY(-90deg) translateZ(100px); }
+        .cube__face--top    { transform: rotateX( 90deg) translateZ(100px); }
+        .cube__face--bottom { transform: rotateX(-90deg) translateZ(100px); }
+        .falling-cube {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            transform-style: preserve-3d;
+            animation: fall linear infinite, rotate infinite;
+        }
+        .falling-cube__face {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: transparent;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .falling-cube__face img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .falling-cube__face--front  { transform: rotateY(  0deg) translateZ(25px); }
+        .falling-cube__face--back   { transform: rotateY(180deg) translateZ(25px); }
+        .falling-cube__face--right  { transform: rotateY( 90deg) translateZ(25px); }
+        .falling-cube__face--left   { transform: rotateY(-90deg) translateZ(25px); }
+        .falling-cube__face--top    { transform: rotateX( 90deg) translateZ(25px); }
+        .falling-cube__face--bottom { transform: rotateX(-90deg) translateZ(25px); }
+        @keyframes fall {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+        @keyframes rotate {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Elemento de áudio -->
+    <audio id="audioPlayer">
+        <source src="audio/mac miller.mp3" type="audio/mpeg"> <!-- Substitua com o caminho da sua música -->
+        Your browser does not support the audio element.
+    </audio>
+
+    <div class="scene">
+        <div class="cube" id="mainCube">
+            <!-- Faces visíveis -->
+            <div class="cube__face cube__face--front"></div>
+            <div class="cube__face cube__face--back"></div>
+            <div class="cube__face cube__face--right"></div>
+            <div class="cube__face cube__face--left"></div>
+            <div class="cube__face cube__face--top"></div>
+            <div class="cube__face cube__face--bottom"></div>
+            <!-- Faces internas (invisíveis) -->
+            <div class="cube__face cube__face--interior-front"></div>
+            <div class="cube__face cube__face--interior-back"></div>
+            <div class="cube__face cube__face--interior-right"></div>
+            <div class="cube__face cube__face--interior-left"></div>
+            <div class="cube__face cube__face--interior-top"></div>
+            <div class="cube__face cube__face--interior-bottom"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cube = document.querySelector('.cube');
+            let isDragging = false;
+            let previousMouseX, previousMouseY;
+            let rotationX = 0, rotationY = 0;
+            let cubesCreated = false; // Variável para controlar se os cubos já foram criados
+
+            document.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMouseX = e.clientX;
+                previousMouseY = e.clientY;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMouseX;
+                    const deltaY = e.clientY - previousMouseY;
+                    rotationX += deltaY * 0.5;
+                    rotationY += deltaX * 0.5;
+                    cube.style.transform = `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+                    previousMouseX = e.clientX;
+                    previousMouseY = e.clientY;
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            document.addEventListener('mouseleave', () => {
+                isDragging = false;
+            });
+
+            // Função para criar cubos caindo com imagens locais
+            function createFallingCube(imageUrls) {
+                const fallingCube = document.createElement('div');
+                fallingCube.className = 'falling-cube';
+                fallingCube.style.left = Math.random() * 100 + 'vw';
+                fallingCube.style.animationDuration = Math.random() * 5 + 3 + 's';
+                fallingCube.style.animationDelay = Math.random() * 5 + 's';
+                fallingCube.style.animationIterationCount = 'infinite';
+                
+                const faces = ['front', 'back', 'right', 'left', 'top', 'bottom'];
+                faces.forEach((face, index) => {
+                    const faceDiv = document.createElement('div');
+                    faceDiv.className = `falling-cube__face falling-cube__face--${face}`;
+                    if (face !== 'interior-front' && face !== 'interior-back' && face !== 'interior-right'
+                        && face !== 'interior-left' && face !== 'interior-top' && face !== 'interior-bottom') {
+                        const img = document.createElement('img');
+                        img.src = 'img/' + imageUrls[index]; // Caminho relativo para as imagens locais
+                        faceDiv.appendChild(img);
+                    }
+                    fallingCube.appendChild(faceDiv);
+                });
+
+                document.body.appendChild(fallingCube);
+            }
+
+            // Adiciona texto "CLIQUE AQUI" no cubo principal
+            const mainCube = document.getElementById('mainCube');
+            const frontFace = mainCube.querySelector('.cube__face--front');
+            frontFace.textContent = 'CLIQUE AQUI';
+            frontFace.style.backgroundColor = '#fff'; // Branco
+            frontFace.style.color = '#000'; // Texto branco
+            frontFace.style.display = 'flex';
+            frontFace.style.alignItems = 'center';
+            frontFace.style.justifyContent = 'center';
+            frontFace.style.fontSize = '12px';
+            frontFace.style.textTransform = 'uppercase';
+            frontFace.style.fontFamily = 'Arial, sans-serif';
+
+            // Evento de clique no cubo principal
+            mainCube.addEventListener('click', () => {
+                if (!cubesCreated) {
+                    cubesCreated = true;
+                    // URLs das imagens para os cubos caindo (imagens locais)
+                    const imageUrls = [
+                        'frente.jpeg',
+                        'tras.jpeg',
+                        'esquerda.jpeg',
+                        'direita.jpg',
+                        'esqueda.jpg',
+                        'cima.jpg'
+                    ];
+                    // Adiciona cubos caindo com imagens
+                    for (let i = 0; i < 50; i++) {
+                        createFallingCube(imageUrls);
+                    }
+
+                    // Inicia a reprodução da música
+                    const audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.play();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
